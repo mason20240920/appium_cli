@@ -67,30 +67,36 @@ func GetAdbOutputString(commandShell string, commandList []string) (error *Appiu
 // KillLoopCmd
 // @Note: this function can not kill subprocess, e,g
 // "python3 main.py"
-func KillLoopCmd(commandShell string, commandList []string) (ret bool, error *AppiumError) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+// 修复后的 KillLoopCmd
+// 建议：不要返回自定义的 *AppiumError，内部工具函数返回标准 error 更加通用
+func KillLoopCmd(commandShell string, commandList []string) (bool, error) {
+	// 缩短超时时间，Ping 不需要 3 秒那么久
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	process := exec.CommandContext(ctx, commandShell, commandList...)
 
-	processOutBytes, _ := process.Output()
+	// CombinedOutput 可以同时获取 stdout 和 stderr，便于调试
+	outputBytes, err := process.CombinedOutput()
+	outputStr := string(outputBytes)
 
-	result := string(processOutBytes)
-
-	pingList := strings.Split(result, "\n")
-
-	if len(pingList) > 1 {
-		ret = true
-	}
-
-	//if err != nil {
-	//	return
-	//}
-
+	// 1. 如果 context 超时了
 	if ctx.Err() == context.DeadlineExceeded {
-		fmt.Println("Timeout")
+		return false, fmt.Errorf("command timed out: %s", outputStr)
 	}
-	return
+
+	// 2. 如果命令执行出错 (比如 adb 没找到，或者 ping 失败)
+	if err != nil {
+		return false, fmt.Errorf("command failed: %v, output: %s", err, outputStr)
+	}
+
+	// 3. 简单的判断逻辑：如果有输出通常意味着执行了
+	// 对于 Ping，我们通常判断是否包含 "ttl=" 或 "bytes from"
+	if len(outputStr) > 0 && !strings.Contains(outputStr, "unknown host") {
+		return true, nil
+	}
+
+	return false, nil
 }
 
 func GetAdbPath() string {

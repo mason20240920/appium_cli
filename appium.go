@@ -2,27 +2,29 @@ package appium_cli
 
 import (
 	"fmt"
-	sf "github.com/sa-/slicefunk"
 	"strings"
 	"time"
+
+	sf "github.com/sa-/slicefunk"
 )
 
 // CreateSession Create the appium new session to do the test, Get the screen size of device
 func (capModel *DeviceCapabilityModel) CreateSession() (deviceModel *DeviceDriverModel, serverErr *AppiumError) {
 	// Make the struct to the desired capabilities
-	model := &AppiumParameter{DesiredCapabilities: DesiredCapabilities{
-		PlatformName:          capModel.Platform.ToString(),
-		PlatformVersion:       capModel.PlatformVersion,
-		DeviceName:            capModel.DeviceName,
-		AppPackage:            capModel.AppPackage,
-		AppActivity:           capModel.AppActivity,
-		NewCommandTimeout:     capModel.NewCommandTimeout,
-		AndroidInstallTimeout: capModel.AndroidInstallTimeout,
-		AutomationName:        capModel.AutomationName,
-		SystemPort:            capModel.SystemPort,
-		Udid:                  capModel.Udid,
-		NoReset:               capModel.NoReset,
-	}}
+	model := &AppiumParameter{Capabilities: CapabilitiesWrapper{
+		AlwaysMatch: DesiredCapabilities{
+			PlatformName:          capModel.Platform.ToString(),
+			PlatformVersion:       capModel.PlatformVersion,
+			DeviceName:            capModel.DeviceName,
+			AppPackage:            capModel.AppPackage,
+			AppActivity:           capModel.AppActivity,
+			NewCommandTimeout:     capModel.NewCommandTimeout,
+			AndroidInstallTimeout: capModel.AndroidInstallTimeout,
+			AutomationName:        capModel.AutomationName,
+			SystemPort:            capModel.SystemPort,
+			Udid:                  capModel.Udid,
+			NoReset:               capModel.NoReset,
+		}}}
 	var result SessionResponse
 	var errorResult SessionErrorResponse
 
@@ -549,21 +551,30 @@ func (driver DeviceDriverModel) SetKeyboardType(imeKeyboard *ImeKeyboardModel) (
 	return
 }
 
-// GetNetworkStatus
-// Use the `adb shell ping` to get the network status
-func (driver DeviceDriverModel) GetNetworkStatus() (ret bool, err *AppiumError) {
+// 修复后的 GetNetworkStatus
+func (driver DeviceDriverModel) GetNetworkStatus() (bool, *AppiumError) {
+	// 关键修改：添加 "-c", "1" 参数，让 ping 只执行一次自动退出
+	// 添加 "-w", "3" 参数，设置 ping 命令内部的超时为 3 秒
 	args := []string{
 		"-s",
 		driver.DeviceName,
 		"shell",
 		"ping",
+		"-c", "1", // Count: 1
+		"-w", "3", // Deadline: 3 seconds
 		"www.baidu.com",
 	}
-	ret, err = KillLoopCmd(GetAdbPath(), args)
+
+	success, err := KillLoopCmd(GetAdbPath(), args)
+
 	if err != nil {
-		return
+		// 将标准 error 包装成你的 AppiumError
+		return false, &AppiumError{
+			Message: fmt.Sprintf("Network check failed: %v", err),
+		}
 	}
-	return
+
+	return success, nil
 }
 
 func (driver DeviceDriverModel) GetElementText(element *FindElementPoint) (value AttributeInterface, elementId string, serverErr *AppiumError) {

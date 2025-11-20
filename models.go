@@ -52,20 +52,20 @@ type SessionErrorResponse struct {
 	Value ValueErrorMsg `json:"value"`
 }
 
-// DesiredCapabilities create the appium desired capability
+// DesiredCapabilities 实际上是 W3C 协议中的 "alwaysMatch" 部分
 type DesiredCapabilities struct {
-	PlatformName          string `json:"platformName"`
-	PlatformVersion       string `json:"platformVersion"`
-	DeviceName            string `json:"deviceName"`
-	AppPackage            string `json:"appPackage"`
-	AppActivity           string `json:"appActivity"`
-	NewCommandTimeout     uint64 `json:"newCommandTimeout"`
-	AndroidInstallTimeout uint64 `json:"androidInstallTimeout"`
-	AutomationName        string `json:"automationName"`
-	SystemPort            uint64 `json:"systemPort"`
-	Udid                  string `json:"udid"`
-	NoReset               bool   `json:"noReset"`
-	//App                   string `json:"app"`
+	PlatformName          string `json:"platformName"` // 标准字段，无前缀
+	PlatformVersion       string `json:"appium:platformVersion"`
+	DeviceName            string `json:"appium:deviceName"`
+	AppPackage            string `json:"appium:appPackage"`
+	AppActivity           string `json:"appium:appActivity"`
+	NewCommandTimeout     uint64 `json:"appium:newCommandTimeout"`
+	AndroidInstallTimeout uint64 `json:"appium:androidInstallTimeout"`
+	AutomationName        string `json:"appium:automationName"`
+	SystemPort            uint64 `json:"appium:systemPort"`
+	Udid                  string `json:"appium:udid"`
+	NoReset               bool   `json:"appium:noReset"`
+	// 如果有其他字段，也需要加 appium: 前缀
 }
 
 // DeviceCapabilityModel user start the device capability
@@ -86,8 +86,12 @@ type DeviceCapabilityModel struct {
 	Client                *req.Client
 }
 
+type CapabilitiesWrapper struct {
+	AlwaysMatch DesiredCapabilities `json:"alwaysMatch"`
+}
+
 type AppiumParameter struct {
-	DesiredCapabilities DesiredCapabilities `json:"desiredCapabilities"`
+	Capabilities CapabilitiesWrapper `json:"capabilities"`
 }
 
 type DeviceDriverModel struct {
