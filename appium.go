@@ -2,9 +2,10 @@ package appium_cli
 
 import (
 	"fmt"
-	sf "github.com/sa-/slicefunk"
 	"strings"
 	"time"
+
+	sf "github.com/sa-/slicefunk"
 )
 
 // CreateSession Create the appium new session to do the test, Get the screen size of device
@@ -198,6 +199,10 @@ func (driver DeviceDriverModel) TouchActionByLoc(coordinate Coordinate) (serverE
 	actions = append(actions, ActionRequestChain{
 		Type:   "pointerDown",
 		Button: 0,
+	})
+	actions = append(actions, ActionRequestChain{
+		Type:     "pause",
+		Duration: 5,
 	})
 	actions = append(actions, ActionRequestChain{
 		Type:   "pointerUp",
